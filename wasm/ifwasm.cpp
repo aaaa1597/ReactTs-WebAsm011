@@ -1,21 +1,11 @@
-#include <stdlib.h>
-#include <SDL/SDL.h>
+#include <string>
+#include <vector>
+#include <complex>
 #include <emscripten.h>
 #include <emscripten/bind.h>
-#include <opencv2/opencv.hpp>
-#include <opencv2/opencv.hpp>
-#include "../src/MainProcess.h"
 
-namespace {
 
-constexpr int WIDTH = 640;
-constexpr int HEIGHT = 480;
-SDL_Surface *screen = nullptr;
-
-} // namespace
-
-#define LOG_OUTPUT 0
-
+#define LOG_OUTPUT 1
 #if LOG_OUTPUT
 EM_JS(int, console_log, (const char *logstr), {
   console.log('aaaaa ' + UTF8ToString(logstr));
@@ -25,49 +15,91 @@ EM_JS(int, console_log, (const char *logstr), {
 #define console_log(logstr)
 #endif
 
-extern "C" int main(int argc, char **argv) {
-  console_log(__PRETTY_FUNCTION__);
-  SDL_Init(SDL_INIT_VIDEO);
-  screen = SDL_SetVideoMode(WIDTH, HEIGHT, 32, SDL_SWSURFACE);
-
-  return 0;
-}
-
 extern "C" {
-size_t EMSCRIPTEN_KEEPALIVE creata_buffer(int size) {
-  console_log(__PRETTY_FUNCTION__);
-  return (size_t)malloc(size * sizeof(uint8_t));
+// int,int,int
+int func1(int a, int b){
+	console_log(__PRETTY_FUNCTION__);
+	return a + b;
 }
 
-void EMSCRIPTEN_KEEPALIVE destroy_buffer(size_t p) {
-  console_log(__PRETTY_FUNCTION__);
-  void *pbuf = (void*)p;
-  free(pbuf);
+// double, double, double
+double func2(double a, double b){
+	console_log(__PRETTY_FUNCTION__);
+	return a + b;
 }
 
-void EMSCRIPTEN_KEEPALIVE Convert(size_t addr, int width, int height, int cnt) {
-  console_log(__PRETTY_FUNCTION__);
-  auto data = reinterpret_cast<void *>(addr);
-  cv::Mat rgbaMat(height, width, CV_8UC4, data);
-  cv::Mat rgbMat;
-  cv::Mat rgbOutMat;
-  cv::Mat outMat;
-  ConvertColor(rgbaMat, rgbMat, cv::COLOR_RGBA2RGB);
-  rgbMat.convertTo(rgbOutMat, -1, 1.0, cnt - 100.0);
-  ConvertColor(rgbOutMat, outMat, cv::COLOR_RGB2RGBA);
-
-  if (SDL_MUSTLOCK(screen))
-    SDL_LockSurface(screen);
-  cv::Mat dstRGBAImage(height, width, CV_8UC4, screen->pixels);
-  outMat.copyTo(dstRGBAImage);
-  if (SDL_MUSTLOCK(screen))
-    SDL_UnlockSurface(screen);
-  SDL_Flip(screen);
+// std::string, std::string, std::string
+std::string func3(const std::string &s1, const std::string &s2){
+	console_log(__PRETTY_FUNCTION__);
+	return s1 + " " + s2;
 }
-} /* extern "C" */
 
-//EMSCRIPTEN_BINDINGS(my_module) {
-//  emscripten::function("convert", &Convert);
-//  emscripten::function("creatabuffer", &creata_buffer);
-//  emscripten::function("destroybuffer", &destroy_buffer);
-//}
+// int配列, int配列, int配列
+emscripten::val func4(const emscripten::val &arg1, const emscripten::val &arg2){
+	console_log(__PRETTY_FUNCTION__);
+	std::vector<int> v1 = vecFromJSArray<int>(arg1);
+	std::vector<int> v2 = vecFromJSArray<int>(arg2);
+	std::vector<int> retvec(v1.begin(), v1.end());
+	std::copy(v2.begin(),v2.end(),std::back_inserter(retvec));
+	emscripten::val retarray = emscripten::val::array(retvec.begin(), retvec.end());
+	return retarray;
+}
+
+// UInt8配列, UInt8配列, UInt8配列
+emscripten::val func5(const emscripten::val &arg1, const emscripten::val &arg2) {
+	console_log(__PRETTY_FUNCTION__);
+	std::vector<uint8_t> v1 = vecFromJSArray<uint8_t>(arg1);
+	std::vector<uint8_t> v2 = vecFromJSArray<uint8_t>(arg2);
+	std::vector<uint8_t> retvec(v1.begin(), v1.end());
+	std::copy(v2.begin(),v2.end(),std::back_inserter(retvec));
+	emscripten::val retarray = emscripten::val::array(retvec.begin(), retvec.end());
+	return retarray;
+}
+
+// string配列, string配列, string配列
+emscripten::val func6(const emscripten::val &arg1, const emscripten::val &arg2){
+	console_log(__PRETTY_FUNCTION__);
+	std::vector<std::string> v1 = vecFromJSArray<std::string>(arg1);
+	std::vector<std::string> v2 = vecFromJSArray<std::string>(arg2);
+	std::vector<std::string> retvec(v1.begin(), v1.end());
+	std::copy(v2.begin(),v2.end(), std::back_inserter(retvec));
+	emscripten::val retarray = emscripten::val::array(retvec.begin(), retvec.end());
+	return retarray;
+}
+
+// JSオブジェクト, JSオブジェクト, JSオブジェクト
+emscripten::val func7(const emscripten::val &arg1, const emscripten::val &arg2){
+	console_log(__PRETTY_FUNCTION__);
+	int x = arg1["x"].as<int>();
+	int y = arg1["y"].as<int>();
+	int w = arg2["x"].as<int>();
+	int h = arg2["y"].as<int>();
+	emscripten::val ret = emscripten::val::global("rect").new_(x,y,w,h);
+	return ret;
+}
+
+// JSONオブジェクト, JSONオブジェクト, JSONオブジェクト
+emscripten::val func8(const emscripten::val &arg1, const emscripten::val &arg2) {
+	console_log(__PRETTY_FUNCTION__);
+	int x = arg1["x2"].as<int>();
+	int y = arg1["y2"].as<int>();
+	int w = arg2["w2"].as<int>();
+	int h = arg2["h2"].as<int>();
+	emscripten::val ret = emscripten::val::object();
+	ret.set("xx",x);
+	ret.set("yy",y);
+	ret.set("ww",y);
+	ret.set("hh",y);
+	return ret;
+}
+EMSCRIPTEN_BINDINGS(module) {
+	emscripten::function("f1", &func1);
+	emscripten::function("f2", &func2);
+	emscripten::function("f3", &func3);
+	emscripten::function("f4", &func4);
+	emscripten::function("f5", &func5);
+	emscripten::function("f6", &func6);
+	emscripten::function("f7", &func7);
+	emscripten::function("f8", &func8); 
+}
+}	//extern "C" 
